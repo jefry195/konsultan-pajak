@@ -3,10 +3,10 @@ import { Send, Phone, User, Bot, Landmark, Paperclip, X, FileText } from 'lucide
 
 // Mengambil API Key dari environment variable (.env) atau menggunakan default (hanya untuk testing)
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyD9vOjWeSVefwHPCVbuthsFfTD9xh2CrPc";
-const GEMINI_MODEL = "gemini-pro"; // Menggunakan model pro yang lebih universal
+const GEMINI_MODEL = "gemini-1.5-flash-latest"; // Menggunakan versi terbaru yang paling disarankan
 
 const fetchGemini = async (history: any[], currentText: string, attachment: Attachment | null) => {
-  const url = `https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
   
   const parts: any[] = [{ text: currentText }];
   
