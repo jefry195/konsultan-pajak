@@ -2,31 +2,50 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Phone, User, Bot, Landmark, Paperclip, X, FileText } from 'lucide-react';
 
 // Mengambil API Key dari environment variable (.env) atau menggunakan default (hanya untuk testing)
-const AGENTROUTER_API_KEY = import.meta.env.VITE_AGENTROUTER_API_KEY || "sk-3GecEd77GSJlVSffX7ctY8RpHmmWGxNcQQcOwamgyQA245JP";
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyD9vOjWeSVefwHPCVbuthsFfTD9xh2CrPc";
+const GEMINI_MODEL = "gemini-1.5-flash";
 
-const BASE_URL = "https://agentrouter.org/v1";
-const MODEL_NAME = "deepseek-chat"; // Menggunakan nama model paling dasar
-
-const fetchWithRetry = async (url: string, options: RequestInit, maxRetries = 3) => {
-  let retries = 0;
-  while (retries < maxRetries) {
-    try {
-      const response = await fetch(url, options);
-      if (!response.ok) {
-        let errorMsg = `HTTP ${response.status}`;
-        try {
-          const errorData = await response.json();
-          errorMsg = errorData.error?.message || errorMsg;
-        } catch (e) {}
-        throw new Error(errorMsg);
+const fetchGemini = async (history: any[], currentText: string, attachment: Attachment | null) => {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+  
+  const parts: any[] = [{ text: currentText }];
+  
+  if (attachment && attachment.mimeType.startsWith('image/')) {
+    parts.push({
+      inline_data: {
+        mime_type: attachment.mimeType,
+        data: attachment.base64
       }
-      return await response.json();
-    } catch (error: any) {
-      retries++;
-      if (retries >= maxRetries) throw error;
-      await new Promise(resolve => setTimeout(resolve, 1000 * retries));
-    }
+    });
   }
+
+  const body = {
+    contents: [
+      ...history,
+      {
+        role: 'user',
+        parts: parts
+      }
+    ],
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 2048,
+    }
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'Gagal menghubungi Gemini');
+  }
+
+  const data = await response.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text;
 };
 
 interface Attachment {
@@ -48,7 +67,7 @@ export default function App() {
     {
       id: 1,
       sender: 'bot',
-      text: 'Halo! Saya adalah **Asisten Jefri**. Ada yang bisa saya bantu?'
+      text: 'Halo! Saya adalah **Chatbot Konsultan Pajak by Jefri**. Saya siap membantu Anda memahami masalah perpajakan Anda. Apa yang ingin Anda tanyakan?'
     }
   ]);
   
@@ -67,19 +86,21 @@ export default function App() {
     scrollToBottom();
   }, [messages]);
 
+  const systemInstruction = `Anda adalah Chatbot Konsultan Pajak by Jefri, seorang ahli pajak berpengalaman di Indonesia. Jawablah pertanyaan seputar pajak (PPh, PPN, SPT, dll) dengan ramah, profesional, dan mudah dipahami. Gunakan bahasa Indonesia. Di akhir setiap jawaban, tambahkan: "Catatan: Jawaban ini bukan merupakan pengganti konsultasi pajak resmi. Untuk kepastian hukum, silakan hubungi Jefri di WA 082354506569."`;
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadError('');
     if (file.size > 5 * 1024 * 1024) { setUploadError('Maks 5MB'); return; }
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-    if (!validTypes.includes(file.type)) { setUploadError('Format tidak didukung'); return; }
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp']; // Gemini AI Studio supports these images
+    if (!validTypes.includes(file.type)) { setUploadError('Format tidak didukung (Gunakan JPG/PNG)'); return; }
 
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64 = (reader.result as string).split(',')[1];
       setAttachment({
-        url: file.type.startsWith('image/') ? URL.createObjectURL(file) : null,
+        url: URL.createObjectURL(file),
         base64,
         mimeType: file.type,
         name: file.name
@@ -92,11 +113,14 @@ export default function App() {
     e.preventDefault();
     if ((!input.trim() && !attachment) || isLoading) return;
 
+    const userMsgText = input.trim();
+    const userMsgAttachment = attachment ? { ...attachment } : null;
+
     const userMessage: Message = {
       id: Date.now(),
       sender: 'user',
-      text: input.trim(),
-      attachment: attachment ? { ...attachment } : null
+      text: userMsgText,
+      attachment: userMsgAttachment
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -105,31 +129,23 @@ export default function App() {
     setIsLoading(true);
 
     try {
-      const apiMessages = [
-        ...messages.map(msg => ({
-          role: msg.sender === 'bot' ? 'assistant' : 'user',
-          content: msg.text || "[File]"
-        })),
+      // Siapkan riwayat chat untuk Gemini
+      const history = [
         {
-          role: "user",
-          content: userMessage.text || "[File]"
-        }
+          role: 'user',
+          parts: [{ text: "INSTRUKSI SISTEM: " + systemInstruction + "\n\nMohon ingat instruksi di atas untuk seluruh percakapan ini." }]
+        },
+        {
+          role: 'model',
+          parts: [{ text: "Baik, saya mengerti. Saya akan bertugas sebagai Chatbot Konsultan Pajak by Jefri dan membantu urusan perpajakan Anda dengan ramah dan profesional." }]
+        },
+        ...messages.slice(1).map(msg => ({
+          role: msg.sender === 'bot' ? 'model' : 'user',
+          parts: [{ text: msg.text }]
+        }))
       ];
 
-      const response = await fetchWithRetry(`${BASE_URL}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${AGENTROUTER_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: MODEL_NAME,
-          messages: apiMessages,
-          temperature: 0.7,
-        })
-      });
-
-      const botText = response.choices?.[0]?.message?.content;
+      const botText = await fetchGemini(history, userMsgText || "Mohon analisis file di atas.", userMsgAttachment);
 
       if (botText) {
         setMessages(prev => [...prev, { id: Date.now() + 1, sender: 'bot', text: botText }]);
