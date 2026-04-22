@@ -5,7 +5,7 @@ import { Send, Phone, User, Bot, Landmark, Paperclip, X, FileText } from 'lucide
 const AGENTROUTER_API_KEY = import.meta.env.VITE_AGENTROUTER_API_KEY || "sk-p91kHsKgqzNHEWNGlZKVZLiKO79RnASl1g3FpB1xnCgOQcp2";
 
 const BASE_URL = "https://agentrouter.org/v1";
-const MODEL_NAME = "deepseek-v3.2"; // Menggunakan model v3.2 sesuai kode awal
+const MODEL_NAME = "deepseek-v3"; // Diubah dari v3.2 ke v3 agar lebih kompatibel dengan AgentRouter
 
 const fetchWithRetry = async (url: string, options: RequestInit, maxRetries = 5) => {
   let retries = 0;
