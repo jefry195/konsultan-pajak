@@ -2,10 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Phone, User, Bot, Landmark, Paperclip, X, FileText } from 'lucide-react';
 
 // Mengambil API Key dari environment variable (.env) atau menggunakan default (hanya untuk testing)
-const AGENTROUTER_API_KEY = import.meta.env.VITE_AGENTROUTER_API_KEY || "sk-p91kHsKgqzNHEWNGlZKVZLiKO79RnASl1g3FpB1xnCgOQcp2";
+const AGENTROUTER_API_KEY = import.meta.env.VITE_AGENTROUTER_API_KEY || "+u+NVasPramxAizMBdlt8Cfj3xBx1MeN";
 
 const BASE_URL = "https://agentrouter.org/v1";
-const MODEL_NAME = "deepseek-v3"; // Diubah dari v3.2 ke v3 agar lebih kompatibel dengan AgentRouter
+const MODEL_NAME = "gpt-4o-mini"; // Menggunakan model gpt-4o-mini yang lebih stabil terhadap filter konten
 
 const fetchWithRetry = async (url: string, options: RequestInit, maxRetries = 5) => {
   let retries = 0;
