@@ -26,8 +26,22 @@ const fetchWithRetry = async (url: string, options: RequestInit, maxRetries = 5)
   }
 };
 
+interface Attachment {
+  url: string | null;
+  base64: string;
+  mimeType: string;
+  name: string;
+}
+
+interface Message {
+  id: number;
+  sender: 'bot' | 'user';
+  text: string;
+  attachment?: Attachment | null;
+}
+
 export default function App() {
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
       sender: 'bot',
