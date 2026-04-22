@@ -5,7 +5,7 @@ import { Send, Phone, User, Bot, Landmark, Paperclip, X, FileText } from 'lucide
 const AGENTROUTER_API_KEY = import.meta.env.VITE_AGENTROUTER_API_KEY || "sk-3GecEd77GSJlVSffX7ctY8RpHmmWGxNcQQcOwamgyQA245JP";
 
 const BASE_URL = "https://agentrouter.org/v1";
-const MODEL_NAME = "deepseek-r1-0528"; // Menggunakan model r1 sebagai alternatif yang lebih fleksibel
+const MODEL_NAME = "deepseek-chat"; // Menggunakan nama model paling dasar
 
 const fetchWithRetry = async (url: string, options: RequestInit, maxRetries = 3) => {
   let retries = 0;
@@ -48,7 +48,7 @@ export default function App() {
     {
       id: 1,
       sender: 'bot',
-      text: 'Halo! Saya adalah **Asisten Jefri**. Ada yang bisa saya bantu sekarang?'
+      text: 'Halo! Saya adalah **Asisten Jefri**. Ada yang bisa saya bantu?'
     }
   ]);
   
@@ -66,8 +66,6 @@ export default function App() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  const systemInstruction = `Anda adalah Asisten Jefri yang ramah.`;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -94,9 +92,9 @@ export default function App() {
     e.preventDefault();
     if ((!input.trim() && !attachment) || isLoading) return;
 
-    const userMessage = {
+    const userMessage: Message = {
       id: Date.now(),
-      sender: 'user' as const,
+      sender: 'user',
       text: input.trim(),
       attachment: attachment ? { ...attachment } : null
     };
@@ -104,27 +102,17 @@ export default function App() {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setAttachment(null);
-    setUploadError('');
     setIsLoading(true);
 
     try {
       const apiMessages = [
-        { role: "system", content: systemInstruction },
         ...messages.map(msg => ({
           role: msg.sender === 'bot' ? 'assistant' : 'user',
-          content: msg.text || `[File: ${msg.attachment?.name || 'dokumen'}]`
+          content: msg.text || "[File]"
         })),
         {
           role: "user",
-          content: userMessage.attachment?.mimeType?.startsWith('image/')
-            ? [
-                { type: "text", text: userMessage.text || "Mohon analisis dokumen/gambar ini terkait pajak." },
-                {
-                  type: "image_url",
-                  image_url: { url: `data:${userMessage.attachment.mimeType};base64,${userMessage.attachment.base64}` }
-                }
-              ]
-            : (userMessage.text || `[File terlampir: ${userMessage.attachment?.name}]`)
+          content: userMessage.text || "[File]"
         }
       ];
 
