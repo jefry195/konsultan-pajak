@@ -5,23 +5,26 @@ import { Send, Phone, User, Bot, Landmark, Paperclip, X, FileText } from 'lucide
 const AGENTROUTER_API_KEY = import.meta.env.VITE_AGENTROUTER_API_KEY || "sk-3GecEd77GSJlVSffX7ctY8RpHmmWGxNcQQcOwamgyQA245JP";
 
 const BASE_URL = "https://agentrouter.org/v1";
-const MODEL_NAME = "deepseek-v3.1"; // Menggunakan model v3.1 sebagai alternatif stabil
+const MODEL_NAME = "deepseek-r1-0528"; // Menggunakan model r1 sebagai alternatif yang lebih fleksibel
 
-const fetchWithRetry = async (url: string, options: RequestInit, maxRetries = 5) => {
+const fetchWithRetry = async (url: string, options: RequestInit, maxRetries = 3) => {
   let retries = 0;
   while (retries < maxRetries) {
     try {
       const response = await fetch(url, options);
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+        let errorMsg = `HTTP ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.error?.message || errorMsg;
+        } catch (e) {}
+        throw new Error(errorMsg);
       }
       return await response.json();
     } catch (error: any) {
       retries++;
       if (retries >= maxRetries) throw error;
-      const delay = Math.pow(2, retries - 1) * 1000;
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise(resolve => setTimeout(resolve, 1000 * retries));
     }
   }
 };
@@ -45,13 +48,13 @@ export default function App() {
     {
       id: 1,
       sender: 'bot',
-      text: 'Halo! Saya adalah **Chatbot Konsultan Pajak by Jefri**. Saya siap membantu Anda memahami dan menyelesaikan masalah perpajakan, baik di Indonesia maupun skala global. Apa yang ingin Anda tanyakan hari ini?'
+      text: 'Halo! Saya adalah **Chatbot Konsultan Pajak by Jefri**. Silakan tanyakan masalah perpajakan Anda.'
     }
   ]);
   
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [attachment, setAttachment] = useState<any>(null);
+  const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [uploadError, setUploadError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -64,32 +67,15 @@ export default function App() {
     scrollToBottom();
   }, [messages]);
 
-  const systemInstruction = `
-Anda adalah Chatbot Konsultan Pajak by Jefri, seorang ahli pajak berpengalaman di Indonesia.
-Gaya bicara: ramah, sabar, jelas, profesional, dan mudah dipahami orang awam maupun pengusaha.
-Spesialisasi: PPh, PPN, SPT, e-Faktur, e-Bupot, tax planning, PMK terbaru, UU HPP, pajak UMKM, dan pajak internasional.
-
-Selalu jawab dalam bahasa Indonesia yang baik.
-Gunakan emoji secukupnya agar ramah.
-Di akhir setiap jawaban, tambahkan:
-"Catatan: Jawaban ini bukan merupakan pengganti konsultasi pajak resmi. Untuk kepastian hukum, silakan hubungi Jefri di WA 082354506569."
-`.trim();
+  const systemInstruction = `Anda adalah Chatbot Konsultan Pajak by Jefri. Jawablah pertanyaan seputar pajak Indonesia dengan ramah.`;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setUploadError('');
-    if (file.size > 5 * 1024 * 1024) {
-      setUploadError('Ukuran file maksimal 5MB.');
-      return;
-    }
-
+    if (file.size > 5 * 1024 * 1024) { setUploadError('Maks 5MB'); return; }
     const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-    if (!validTypes.includes(file.type)) {
-      setUploadError('Format tidak didukung. Gunakan JPG, PNG, WEBP, atau PDF.');
-      return;
-    }
+    if (!validTypes.includes(file.type)) { setUploadError('Format tidak didukung'); return; }
 
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -102,7 +88,6 @@ Di akhir setiap jawaban, tambahkan:
       });
     };
     reader.readAsDataURL(file);
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
