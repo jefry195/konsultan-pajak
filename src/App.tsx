@@ -4,7 +4,7 @@ import { Send, Phone, User, Bot, Landmark, Paperclip, X, FileText } from 'lucide
 // Mengambil API Key dari environment variable (.env) atau menggunakan default (hanya untuk testing)
 const AGENTROUTER_API_KEY = import.meta.env.VITE_AGENTROUTER_API_KEY || "sk-p91kHsKgqzNHEWNGlZKVZLiKO79RnASl1g3FpB1xnCgOQcp2";
 
-const BASE_URL = "https://api.agentrouter.org/v1";
+const BASE_URL = "https://agentrouter.org/v1";
 const MODEL_NAME = "deepseek-v3.2"; // Menggunakan model v3.2 sesuai kode awal
 
 const fetchWithRetry = async (url: string, options: RequestInit, maxRetries = 5) => {
