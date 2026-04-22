@@ -5,7 +5,7 @@ import { Send, Phone, User, Bot, Landmark, Paperclip, X, FileText } from 'lucide
 const AGENTROUTER_API_KEY = import.meta.env.VITE_AGENTROUTER_API_KEY || "sk-3GecEd77GSJlVSffX7ctY8RpHmmWGxNcQQcOwamgyQA245JP";
 
 const BASE_URL = "https://agentrouter.org/v1";
-const MODEL_NAME = "deepseek-v3.2"; // Menggunakan model v3.2 sesuai dokumentasi Codex dan izin akun Anda
+const MODEL_NAME = "deepseek-v3.1"; // Menggunakan model v3.1 sebagai alternatif stabil
 
 const fetchWithRetry = async (url: string, options: RequestInit, maxRetries = 5) => {
   let retries = 0;
@@ -153,7 +153,6 @@ Di akhir setiap jawaban, tambahkan:
           model: MODEL_NAME,
           messages: apiMessages,
           temperature: 0.7,
-          max_tokens: 4096,
         })
       });
 
