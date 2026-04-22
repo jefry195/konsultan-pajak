@@ -1,19 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Phone, User, Bot, Landmark, Paperclip, X, FileText } from 'lucide-react';
 
+// Mengambil API Key dari environment variable (.env) atau menggunakan default (hanya untuk testing)
 const AGENTROUTER_API_KEY = import.meta.env.VITE_AGENTROUTER_API_KEY || "sk-p91kHsKgqzNHEWNGlZKVZLiKO79RnASl1g3FpB1xnCgOQcp2";
 
 const BASE_URL = "https://api.agentrouter.org/v1";
-const MODEL_NAME = "deepseek-v3.2";   // ← Bisa diganti: deepseek-r1-0528 / glm-4.5 / deepseek-v3.1
+const MODEL_NAME = "deepseek-v3.2"; // Menggunakan model v3.2 sesuai kode awal
 
 const fetchWithRetry = async (url: string, options: RequestInit, maxRetries = 5) => {
   let retries = 0;
   while (retries < maxRetries) {
     try {
       const response = await fetch(url, options);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
       return await response.json();
-    } catch (error) {
+    } catch (error: any) {
       retries++;
       if (retries >= maxRetries) throw error;
       const delay = Math.pow(2, retries - 1) * 1000;
@@ -144,14 +148,14 @@ Di akhir setiap jawaban, tambahkan:
       if (botText) {
         setMessages(prev => [...prev, { id: Date.now() + 1, sender: 'bot', text: botText }]);
       } else {
-        throw new Error("Tidak ada respons");
+        throw new Error("Tidak ada respons dari AI.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
         sender: 'bot',
-        text: 'Maaf, terjadi kesalahan saat menghubungi AI. Silakan coba lagi atau hubungi Jefri langsung via WhatsApp.'
+        text: `Maaf, terjadi kesalahan: ${error.message}. Silakan coba lagi atau hubungi Jefri via WhatsApp.`
       }]);
     } finally {
       setIsLoading(false);
@@ -167,7 +171,7 @@ Di akhir setiap jawaban, tambahkan:
   };
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 font-sans">
+    <div className="flex flex-col h-screen bg-slate-50 font-sans w-full overflow-hidden">
       {/* Header */}
       <header className="bg-blue-900 text-white shadow-md p-4 flex items-center justify-between z-10 shrink-0">
         <div className="flex items-center space-x-3">
@@ -183,7 +187,7 @@ Di akhir setiap jawaban, tambahkan:
         <a href="https://wa.me/6282354506569" target="_blank" rel="noopener noreferrer"
           className="flex items-center gap-2 bg-green-500 hover:bg-green-600 px-4 py-2 rounded-full text-sm font-medium transition-colors">
           <Phone className="w-4 h-4" />
-          <span>Hubungi Jefri</span>
+          <span className="hidden sm:inline">Hubungi Jefri</span>
         </a>
       </header>
 
@@ -191,31 +195,31 @@ Di akhir setiap jawaban, tambahkan:
       <main className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-slate-100">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`flex max-w-[85%] ${msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+            <div className={`flex max-w-[90%] md:max-w-[85%] ${msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
               <div className="flex-shrink-0 mx-2 mt-1">
                 {msg.sender === 'user' ? (
-                  <div className="bg-slate-400 w-8 h-8 rounded-full flex items-center justify-center">
+                  <div className="bg-slate-400 w-8 h-8 rounded-full flex items-center justify-center shadow-sm">
                     <User className="w-5 h-5 text-white" />
                   </div>
                 ) : (
-                  <div className="bg-blue-600 w-8 h-8 rounded-full flex items-center justify-center">
+                  <div className="bg-blue-600 w-8 h-8 rounded-full flex items-center justify-center shadow-sm">
                     <Bot className="w-5 h-5 text-white" />
                   </div>
                 )}
               </div>
 
-              <div className={`p-4 rounded-2xl shadow text-[15px] leading-relaxed
+              <div className={`p-4 rounded-2xl shadow-sm text-[15px] leading-relaxed
                 ${msg.sender === 'user' 
                   ? 'bg-blue-600 text-white rounded-tr-none' 
-                  : 'bg-white border border-slate-200 rounded-tl-none'}`}>
+                  : 'bg-white border border-slate-200 rounded-tl-none text-slate-800'}`}>
                 {msg.attachment && (
                   <div className="mb-3">
                     {msg.attachment.url ? (
-                      <img src={msg.attachment.url} alt="preview" className="max-h-64 rounded-lg" />
+                      <img src={msg.attachment.url} alt="preview" className="max-h-64 rounded-lg object-contain bg-slate-50 border" />
                     ) : (
-                      <div className="flex items-center gap-2 bg-slate-100 p-3 rounded-lg">
+                      <div className="flex items-center gap-2 bg-slate-100 p-3 rounded-lg border border-slate-200">
                         <FileText className="w-6 h-6 text-slate-500" />
-                        <span className="text-sm">{msg.attachment.name}</span>
+                        <span className="text-sm truncate max-w-[150px]">{msg.attachment.name}</span>
                       </div>
                     )}
                   </div>
@@ -228,7 +232,7 @@ Di akhir setiap jawaban, tambahkan:
 
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-white border border-slate-200 p-4 rounded-2xl flex items-center gap-2">
+            <div className="bg-white border border-slate-200 p-4 rounded-2xl flex items-center gap-2 shadow-sm">
               <div className="flex gap-1">
                 <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" />
                 <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce delay-150" />
@@ -245,43 +249,73 @@ Di akhir setiap jawaban, tambahkan:
       <footer className="bg-white border-t p-4 shrink-0">
         <div className="max-w-4xl mx-auto">
           {attachment && (
-            <div className="mb-3 bg-slate-50 border rounded-xl p-3 flex items-center justify-between">
+            <div className="mb-3 bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                {attachment.url ? <img src={attachment.url} className="w-12 h-12 object-cover rounded" /> : <FileText className="w-8 h-8 text-slate-500" />}
-                <span className="text-sm text-slate-700 truncate max-w-[200px]">{attachment.name}</span>
+                {attachment.url ? (
+                  <img src={attachment.url} className="w-10 h-10 object-cover rounded border" />
+                ) : (
+                  <FileText className="w-8 h-8 text-blue-500" />
+                )}
+                <span className="text-sm text-blue-800 font-medium truncate max-w-[200px]">{attachment.name}</span>
               </div>
-              <button onClick={() => setAttachment(null)} className="p-2 hover:bg-slate-200 rounded-full">
+              <button 
+                type="button"
+                onClick={() => setAttachment(null)} 
+                className="p-1.5 hover:bg-blue-200 text-blue-600 rounded-full transition-colors"
+                aria-label="Remove attachment"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
           )}
 
-          {uploadError && <div className="text-red-500 text-xs mb-2">{uploadError}</div>}
+          {uploadError && <div className="text-red-500 text-xs mb-2 font-medium bg-red-50 p-2 rounded-lg border border-red-100">{uploadError}</div>}
 
-          <form onSubmit={handleSendMessage} className="flex gap-2">
-            <div className="flex-1 relative bg-slate-50 border border-slate-300 rounded-3xl focus-within:border-blue-500 focus-within:ring-1">
-              <button type="button" onClick={() => fileInputRef.current?.click()} className="absolute left-4 top-4 text-slate-500 hover:text-blue-600">
+          <form onSubmit={handleSendMessage} className="flex gap-2 items-end">
+            <div className="flex-1 relative bg-slate-50 border border-slate-300 rounded-2xl focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+              <button 
+                type="button" 
+                onClick={() => fileInputRef.current?.click()} 
+                className="absolute left-3 bottom-3 text-slate-400 hover:text-blue-600 p-1 rounded-full transition-colors"
+                title="Unggah dokumen"
+              >
                 <Paperclip className="w-5 h-5" />
               </button>
-              <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/jpeg,image/png,image/webp,application/pdf" />
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                className="hidden" 
+                accept="image/jpeg,image/png,image/webp,application/pdf" 
+              />
 
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(e); }}}
+                onKeyDown={(e) => { 
+                  if (e.key === 'Enter' && !e.shiftKey) { 
+                    e.preventDefault(); 
+                    handleSendMessage(e); 
+                  }
+                }}
                 placeholder="Tanyakan masalah pajak atau unggah dokumen..."
-                className="w-full bg-transparent py-4 pl-14 pr-5 focus:outline-none resize-y min-h-[54px] max-h-32 text-[15px]"
+                className="w-full bg-transparent py-3 pl-11 pr-4 focus:outline-none resize-none min-h-[48px] max-h-32 text-[15px] text-slate-700"
+                rows={1}
               />
             </div>
 
-            <button type="submit" disabled={isLoading || (!input.trim() && !attachment)}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-3xl p-4 transition-all">
+            <button 
+              type="submit" 
+              disabled={isLoading || (!input.trim() && !attachment)}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-xl p-3 shadow-md hover:shadow-lg disabled:shadow-none transition-all"
+              aria-label="Send message"
+            >
               <Send className="w-5 h-5" />
             </button>
           </form>
 
-          <p className="text-center text-xs text-slate-400 mt-4">
-            AI dapat memberikan informasi yang belum tentu 100% akurat. Untuk kepastian hukum, hubungi Jefri.
+          <p className="text-center text-[10px] text-slate-400 mt-3 uppercase tracking-wider font-medium">
+            Saran & Kepastian Hukum: Hubungi Jefri di 082354506569
           </p>
         </div>
       </footer>
