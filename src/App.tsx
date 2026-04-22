@@ -48,7 +48,7 @@ export default function App() {
     {
       id: 1,
       sender: 'bot',
-      text: 'Halo! Saya adalah **Chatbot Konsultan Pajak by Jefri**. Silakan tanyakan masalah perpajakan Anda.'
+      text: 'Halo! Saya adalah **Asisten Jefri**. Ada yang bisa saya bantu sekarang?'
     }
   ]);
   
@@ -67,7 +67,7 @@ export default function App() {
     scrollToBottom();
   }, [messages]);
 
-  const systemInstruction = `Anda adalah Chatbot Konsultan Pajak by Jefri. Jawablah pertanyaan seputar pajak Indonesia dengan ramah.`;
+  const systemInstruction = `Anda adalah Asisten Jefri yang ramah.`;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
